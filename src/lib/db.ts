@@ -12,6 +12,26 @@ declare global {
   var __birthdaySchemaReady: boolean | undefined;
 }
 
+export class DatabaseConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DatabaseConfigError";
+  }
+}
+
+function isRemoteUrl(url: string | undefined): url is string {
+  return Boolean(
+    url &&
+      (url.startsWith("libsql://") ||
+        url.startsWith("https://") ||
+        url.startsWith("http://")),
+  );
+}
+
+function isVercel() {
+  return process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+}
+
 function getDbPath() {
   const dir = path.join(process.cwd(), "data");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -23,12 +43,33 @@ function fileUrl(dbPath: string) {
   return normalized.startsWith("/") ? `file://${normalized}` : `file:///${normalized}`;
 }
 
+export function getDatabaseMode(): "remote" | "local" {
+  if (isRemoteUrl(process.env.TURSO_DATABASE_URL)) return "remote";
+  if (isVercel()) {
+    throw new DatabaseConfigError(
+      "Local SQLite cannot run on Vercel. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the Vercel project Environment Variables, then redeploy.",
+    );
+  }
+  return "local";
+}
+
 function getClient(): Client {
   if (globalThis.__birthdayDb) return globalThis.__birthdayDb;
-  const dbPath = getDbPath();
-  const client = createClient({ url: fileUrl(dbPath) });
-  globalThis.__birthdayDb = client;
-  return client;
+
+  const mode = getDatabaseMode();
+  if (mode === "remote") {
+    const url = process.env.TURSO_DATABASE_URL!;
+    globalThis.__birthdayDb = createClient({
+      url,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+  } else {
+    globalThis.__birthdayDb = createClient({
+      url: fileUrl(getDbPath()),
+    });
+  }
+
+  return globalThis.__birthdayDb;
 }
 
 export async function initDb() {
@@ -114,57 +155,75 @@ function mapCard(row: Record<string, unknown>): BirthdayCard {
   };
 }
 
+function dbErrorMessage(error: unknown) {
+  if (error instanceof DatabaseConfigError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Database error";
+}
+
 export async function createUser(input: {
   id: string;
   name: string;
   email: string;
   passwordHash: string;
 }): Promise<User> {
-  await initDb();
-  const createdAt = new Date().toISOString();
-  await getClient().execute({
-    sql: `INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
-    args: [input.id, input.name, input.email.toLowerCase(), input.passwordHash, createdAt],
-  });
-  return {
-    id: input.id,
-    name: input.name,
-    email: input.email.toLowerCase(),
-    createdAt,
-  };
+  try {
+    await initDb();
+    const createdAt = new Date().toISOString();
+    await getClient().execute({
+      sql: `INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
+      args: [input.id, input.name, input.email.toLowerCase(), input.passwordHash, createdAt],
+    });
+    return {
+      id: input.id,
+      name: input.name,
+      email: input.email.toLowerCase(),
+      createdAt,
+    };
+  } catch (error) {
+    throw new Error(dbErrorMessage(error));
+  }
 }
 
 export async function getUserByEmail(email: string) {
-  await initDb();
-  const result = await getClient().execute({
-    sql: `SELECT id, name, email, password_hash, created_at FROM users WHERE email = ?`,
-    args: [email.toLowerCase()],
-  });
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    email: String(row.email),
-    passwordHash: String(row.password_hash),
-    createdAt: String(row.created_at),
-  };
+  try {
+    await initDb();
+    const result = await getClient().execute({
+      sql: `SELECT id, name, email, password_hash, created_at FROM users WHERE email = ?`,
+      args: [email.toLowerCase()],
+    });
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      email: String(row.email),
+      passwordHash: String(row.password_hash),
+      createdAt: String(row.created_at),
+    };
+  } catch (error) {
+    throw new Error(dbErrorMessage(error));
+  }
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  await initDb();
-  const result = await getClient().execute({
-    sql: `SELECT id, name, email, created_at FROM users WHERE id = ?`,
-    args: [id],
-  });
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    email: String(row.email),
-    createdAt: String(row.created_at),
-  };
+  try {
+    await initDb();
+    const result = await getClient().execute({
+      sql: `SELECT id, name, email, created_at FROM users WHERE id = ?`,
+      args: [id],
+    });
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      email: String(row.email),
+      createdAt: String(row.created_at),
+    };
+  } catch (error) {
+    throw new Error(dbErrorMessage(error));
+  }
 }
 
 export async function listCardsForUser(userId: string): Promise<BirthdayCard[]> {

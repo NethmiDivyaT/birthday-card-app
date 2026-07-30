@@ -36,6 +36,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ user });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Registration failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Registration failed";
+    const isConfig = message.includes("TURSO_") || message.includes("Vercel");
+    return NextResponse.json(
+      { error: isConfig ? message : "Registration failed" },
+      { status: 500 },
+    );
   }
 }

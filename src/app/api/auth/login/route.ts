@@ -29,6 +29,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Login failed";
+    const isConfig = message.includes("TURSO_") || message.includes("Vercel");
+    return NextResponse.json(
+      { error: isConfig ? message : "Login failed" },
+      { status: 500 },
+    );
   }
 }
