@@ -30,6 +30,7 @@ Vercel cannot use a local SQLite file. Create a free [Turso](https://turso.tech)
 1. `AUTH_SECRET` — any long random string  
 2. `TURSO_DATABASE_URL` — from Turso (starts with `libsql://`)  
 3. `TURSO_AUTH_TOKEN` — from Turso  
+4. `BLOB_READ_WRITE_TOKEN` — from a Vercel Blob store (for photo/video uploads)
 
 Turso CLI example:
 
@@ -40,10 +41,16 @@ turso db show wishlink --url
 turso db tokens create wishlink
 ```
 
+Blob store example:
+
+```bash
+vercel blob create-store wishlink-uploads --access public --yes
+```
+
 Then redeploy the Vercel project.
 
 ## Stack
 
 - Next.js App Router
 - SQLite locally / Turso (`@libsql/client`) in production
-- Uploads stored in `public/uploads` (local only; use a blob store for durable uploads on Vercel)
+- Local uploads in `public/uploads`; production uploads via Vercel Blob

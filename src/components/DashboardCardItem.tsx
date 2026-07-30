@@ -37,8 +37,9 @@ export function DashboardCardItem({ card, origin }: Props) {
       <div>
         <h3>{card.recipientName}</h3>
         <p className="meta">{card.title}</p>
-        <p className="meta">
-          Updated {new Date(card.updatedAt).toLocaleString()} · token {card.shareToken}
+        <p className="meta" suppressHydrationWarning>
+          Updated {new Date(card.updatedAt).toISOString().slice(0, 16).replace("T", " ")} UTC · token{" "}
+          {card.shareToken}
         </p>
         <div className="actions-row" style={{ marginTop: "0.75rem" }}>
           <Link className="btn btn-ghost" href={`/dashboard/cards/${card.id}`}>

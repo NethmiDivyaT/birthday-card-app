@@ -36,9 +36,9 @@ type Props = {
   };
 };
 
-function blankRecipient(senderName: string): RecipientDraft {
+function blankRecipient(senderName: string, key = "recipient-1"): RecipientDraft {
   return {
-    key: crypto.randomUUID(),
+    key,
     recipientName: "",
     recipientEmail: "",
     recipientPhone: "",
@@ -125,7 +125,7 @@ export function CardEditor({ senderName, mode = "create", cardId, initial }: Pro
       const next = [
         ...list,
         {
-          ...blankRecipient(sender),
+          ...blankRecipient(sender, `recipient-${list.length + 1}-${Date.now()}`),
           theme: { ...active.theme },
           title: active.title,
           message: active.message,
