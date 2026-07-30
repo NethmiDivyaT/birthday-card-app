@@ -374,28 +374,39 @@ export function CardEditor({ senderName, mode = "create", cardId, initial }: Pro
           ))}
         </fieldset>
 
-        <div className="field">
-          <label>Photos (up to 8)</label>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            multiple
-            onChange={(e) => void onImagesSelected(e.target.files)}
-          />
-          <div className="upload-preview-row">
-            {images.map((src) => (
-              <div key={src} className="upload-chip">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" />
-                <button
-                  type="button"
-                  onClick={() => setImages((prev) => prev.filter((x) => x !== src))}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+        <div className="field photo-field">
+          <div className="photo-field-head">
+            <label>Photos (up to 8)</label>
+            <span className="photo-count">{images.length}/8</span>
           </div>
+          <label className="photo-dropzone">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              onChange={(e) => void onImagesSelected(e.target.files)}
+            />
+            <span className="photo-dropzone-title">Add photos</span>
+            <span className="photo-dropzone-hint">JPG, PNG, WEBP, or GIF · max 8</span>
+          </label>
+          {images.length > 0 && (
+            <div className="upload-preview-grid">
+              {images.map((src, index) => (
+                <div key={src} className="upload-chip">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" />
+                  <span className="upload-chip-index">{index + 1}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove photo ${index + 1}`}
+                    onClick={() => setImages((prev) => prev.filter((x) => x !== src))}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="field">

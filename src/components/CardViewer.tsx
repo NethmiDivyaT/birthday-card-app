@@ -182,7 +182,7 @@ export function CardViewer({ card, preview = false }: Props) {
                   className={`slide-anim slide-${transition}`}
                 />
               </div>
-              <div className="thumb-row">
+              <div className="thumb-grid">
                 {card.images.map((src, i) => (
                   <button
                     key={src}
